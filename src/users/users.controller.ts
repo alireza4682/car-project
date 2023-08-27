@@ -8,26 +8,52 @@ import {
   Query,
   Delete,
   NotFoundException,
-  UseInterceptors,
-  ClassSerializerInterceptor,
+  Session,
+  UseGuards,
 } from '@nestjs/common';
 import { CreateUserDto } from './dtos/create-user.dto';
 import { UpdateUserDto } from './dtos/update-user.dto';
 import { UsersService } from './users.service';
 import { Serialize } from 'src/interceptors/serialize.interceptor';
 import { UserDto } from './dtos/user.dto';
+import { AuthService } from './auth.service';
+import { CurrentUser } from './decorators/current-user.decorator';
+import { User } from './user.entity';
+import { AuthGaurd } from 'src/gaurds/auth.gaurds';
 
 @Controller('auth')
 @Serialize(UserDto)
 export class UsersController {
-  constructor(private usersService: UsersService) {}
+  constructor(
+    private usersService: UsersService,
+    private authService: AuthService,
+  ) {}
 
-  @Post('/signup')
-  createUser(@Body() body: CreateUserDto) {
-    this.usersService.create(body.email, body.password);
+  @Get('whoami')
+  @UseGuards(AuthGaurd)
+  whoAmI(@CurrentUser() user: User) {
+    return user;
   }
 
-  @UseInterceptors(ClassSerializerInterceptor)
+  @Post('/signout')
+  signOut(@Session() session: any) {
+    session.userId = null;
+  }
+
+  @Post('/signup')
+  async createUser(@Body() body: CreateUserDto, @Session() session: any) {
+    const user = await this.authService.signup(body.email, body.password);
+    session.userId = user.id;
+    return user;
+  }
+
+  @Post('/signin')
+  async signin(@Body() body: CreateUserDto, @Session() session: any) {
+    const user = await this.authService.signin(body.email, body.password);
+    session.userId = user.id;
+    return user;
+  }
+
   @Get('/:id')
   async findUser(@Param('id') id: string) {
     console.log('handler is running');
@@ -39,9 +65,7 @@ export class UsersController {
   }
 
   @Get()
-  findAllUsers(@Query('email') email: string) {
-    return this.usersService.find(email);
-  }
+  findAllUsers(@Query('email') email: string) {}
 
   @Delete('/:id')
   removeUser(@Param('id') id: string) {
