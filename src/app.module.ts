@@ -13,7 +13,6 @@ import { ReportsModule } from './reports/reports.module';
 import { User } from './users/user.entity';
 import { Report } from './reports/report.entity';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { config } from 'process';
 const cookieSession = require('cookie-session');
 
 @Module({
